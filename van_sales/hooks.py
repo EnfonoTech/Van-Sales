@@ -176,7 +176,8 @@ app_license = "mit"
 #
 override_whitelisted_methods = {
 	# "frappe.desk.doctype.event.event.get_events": "van_sales.event.get_events",
-    "van_sales.api.login_and_get_keys": "van_sales.api.login_and_get_keys"
+    "van_sales.api.login_and_get_keys": "van_sales.api.login_and_get_keys",
+    "van_sales.api.get_customers": "van_sales.api.get_customers"
 }
 #
 # each overriding function accepts a `data` argument;
