@@ -15,16 +15,26 @@ def login_and_get_keys(username: str, password: str):
         # Ensure API keys are generated
         if not user_doc.api_key:
             user_doc.api_key = frappe.generate_hash(length=15)
-        if not user_doc.api_secret:
-            user_doc.api_secret = frappe.generate_hash(length=15)
+        # if not user_doc.api_secret:
+        user_doc.api_secret = frappe.generate_hash(length=15)
         user_doc.save(ignore_permissions=True)
 
-        return {
-            "message": "Login successful",
-            "sid": frappe.session.sid,
-            "api_key": user_doc.api_key,
-            "api_secret": get_decrypted_password("User", user, "api_secret")
-        }
+        key = user_doc.api_key
+        secret = get_decrypted_password("User", user, "api_secret")
+
+        frappe.local.login_manager.logout()
+
+        frappe.local.response.update({
+            "data": {
+                "message": "Login successful",
+                "api_key": key,
+                "api_secret": secret
+            },
+            "home_page": "/login",
+            "full_name": user_doc.full_name
+        })
+
+        return 
 
     except Exception as e:
         frappe.local.response.http_status_code = 401
