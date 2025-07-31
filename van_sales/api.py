@@ -53,7 +53,7 @@ def get_customers(limit_start=0, limit_page_length=10, filters=None, fields=None
 
         # Default fields if none provided
         if not fields:
-            fields = ["name", "customer_name", "customer_group", "territory"]
+            fields = ["name", "customer_name", "customer_type", "mobile_no", "email_id"]
 
         # Get total count with filters
         total_count = frappe.db.count("Customer", filters=filters)
