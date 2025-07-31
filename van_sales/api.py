@@ -68,10 +68,14 @@ def get_customers(limit_start=0, limit_page_length=10, filters=None, fields=None
             limit_page_length=int(limit_page_length)
         )
 
-        return {
-            "total_count": total_count,
-            "data": customers
-        }
+        frappe.local.response.update({
+            "data": {
+                "total_count": total_count,
+                "results": customers
+            }
+        })
+
+        return
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_customers API Error")
