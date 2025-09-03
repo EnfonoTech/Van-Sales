@@ -1,6 +1,7 @@
 import frappe
 import json
 from frappe.auth import LoginManager
+from frappe.utils import flt
 from frappe.utils.password import get_decrypted_password
 
 @frappe.whitelist(allow_guest=True)
@@ -135,3 +136,31 @@ def get_sales_orders_with_children(filters=None,limit_start=0, limit_page_length
         })
 
     return
+
+@frappe.whitelist()
+def get_customer_summary(customer, company=None):
+    """
+    Returns total_billed, total_paid, total_pending for a customer.
+    Uses Sales Invoice aggregated values so Payment Entries are included.
+    """
+    filters = {"customer": customer, "docstatus": 1}
+
+    totals = frappe.db.get_all(
+        "Sales Invoice",
+        filters=filters,
+        fields=[
+            "sum(base_grand_total) as total_billed",
+            "sum(outstanding_amount) as total_pending"
+        ]
+    )[0]
+
+    total_billed = flt(totals.total_billed)
+    total_pending = flt(totals.total_pending)
+    total_paid = total_billed - total_pending
+
+    return {
+        "customer": customer,
+        "total_billed": total_billed,
+        "total_paid": total_paid,
+        "total_pending": total_pending
+    }
