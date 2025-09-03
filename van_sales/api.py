@@ -80,3 +80,58 @@ def get_customers(limit_start=0, limit_page_length=10, filters=None, fields=None
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_customers API Error")
         frappe.throw("Something went wrong while fetching customers.")
+
+@frappe.whitelist()
+def get_sales_orders_with_children(filters=None,limit_start=0, limit_page_length=10):
+    """
+    Return Sales Orders with their items and sales_team child tables.
+    """
+    if isinstance(filters, str):
+            filters = json.loads(filters)
+
+    sales_orders = frappe.get_all(
+        "Sales Order",
+        filters=filters,
+        fields=['name'],
+        start=limit_start,
+        page_length=limit_page_length,
+        order_by="transaction_date desc"
+    )
+
+    total_count = frappe.db.count("Sales Order", filters=filters)
+
+    results = []
+    for so in sales_orders:
+        so_doc = frappe.get_doc("Sales Order", so.name)
+
+        # only the following fields will be fetched from so items table
+        items = [
+            {
+                "item_code": row.item_code,
+                "item_name": row.item_name,
+                "uom": row.uom,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            }
+            for row in so_doc.items
+        ]
+
+        results.append({
+            "name": so_doc.name,
+            "customer": so_doc.customer,
+            "transaction_date": so_doc.transaction_date,
+            "status": so_doc.status,
+            "items": items,              # child table
+            "sales_team": so_doc.sales_team,     # child table
+            "grand_total": so_doc.grand_total
+        })
+
+    frappe.local.response.update({
+            "data": {
+                "total_count": total_count,
+                "results": results
+            }
+        })
+
+    return
