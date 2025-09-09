@@ -37,7 +37,10 @@ def login_and_get_keys(username: str, password: str):
         })
 
         return 
-
+    except frappe.AuthenticationError:
+        frappe.local.response.http_status_code = 401
+        return {"error": "Invalid username or password"}
+    
     except Exception as e:
         frappe.local.response.http_status_code = 401
         return {"error": str(e)}
@@ -164,3 +167,55 @@ def get_customer_summary(customer, company=None):
         "total_paid": total_paid,
         "total_pending": total_pending
     }
+
+@frappe.whitelist()
+def get_sales_invoices_with_tables(filters=None,limit_start=0, limit_page_length=10):
+
+    if isinstance(filters, str):
+            filters = json.loads(filters)
+
+    invoices = frappe.db.get_all(
+        "Sales Invoice",
+        filters=filters,
+        fields=['name'],
+        start=limit_start,
+        page_length=limit_page_length,
+        order_by="posting_date desc"
+        )
+    
+    total_count = frappe.db.count("Sales Invoice", filters=filters)
+
+    results = []
+    for si in invoices:
+        si_doc = frappe.get_doc("Sales Invoice", si.name)
+
+        # only the following fields will be fetched from si items table
+        items = [
+            {
+                "item_code": row.item_code,
+                "item_name": row.item_name,
+                "uom": row.uom,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            }
+            for row in si_doc.items
+        ]
+
+        results.append({
+            "name": si_doc.name,
+            "customer": si_doc.customer,
+            "posting_date": si_doc.posting_date,
+            "status": si_doc.status,
+            "items": items,              # child table
+            "grand_total": si_doc.grand_total
+        })
+
+    frappe.local.response.update({
+            "data": {
+                "total_count": total_count,
+                "results": results
+            }
+        })
+
+    return
