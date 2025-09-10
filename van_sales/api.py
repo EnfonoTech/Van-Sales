@@ -17,14 +17,14 @@ def login_and_get_keys(username: str, password: str):
         # Ensure API keys are generated
         if not user_doc.api_key:
             user_doc.api_key = frappe.generate_hash(length=15)
-        # if not user_doc.api_secret:
-        user_doc.api_secret = frappe.generate_hash(length=15)
-        user_doc.save(ignore_permissions=True)
+        if not user_doc.api_secret:
+            user_doc.api_secret = frappe.generate_hash(length=15)
+            user_doc.save(ignore_permissions=True)
 
         key = user_doc.api_key
         secret = get_decrypted_password("User", user, "api_secret")
 
-        frappe.local.login_manager.logout()
+        # frappe.local.login_manager.logout()
 
         frappe.local.response.update({
             "data": {
