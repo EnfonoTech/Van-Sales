@@ -72,6 +72,12 @@ def get_customers(limit_start=0, limit_page_length=10, filters=None, fields=None
             limit_page_length=int(limit_page_length)
         )
 
+        for customer_dict in customers:
+            summary = get_customer_summary(customer_dict.get('name'))
+            customer_dict['total_billed'] = summary.get('total_billed')
+            customer_dict['total_paid'] = summary.get('total_paid')
+            customer_dict['total_pending'] = summary.get('total_pending')
+
         frappe.local.response.update({
             "data": {
                 "total_count": total_count,
