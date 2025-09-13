@@ -225,3 +225,38 @@ def get_sales_invoices_with_tables(filters=None,limit_start=0, limit_page_length
         })
 
     return
+
+
+@frappe.whitelist()
+def create_sales_invoice_with_salesperson(invoice_data: dict):
+    """
+    Create Sales Invoice and auto-assign salesperson based on current user
+    """
+
+    if isinstance(invoice_data, str):
+        invoice_data = frappe.parse_json(invoice_data)
+
+    current_user = frappe.session.user
+
+    employee = frappe.db.get_value("Employee", {"user_id": current_user}, "name")
+    if not employee:
+        frappe.throw(f"No Employee linked to User {current_user}")
+
+    sales_person = frappe.db.get_value("Sales Person", {"employee": employee}, "name")
+    if not sales_person:
+        frappe.throw(f"No Sales Person linked to Employee {employee}")
+
+    si = frappe.get_doc({
+        "doctype": "Sales Invoice",
+        **invoice_data
+    })
+
+    si.append("sales_team", {
+        "sales_person": sales_person,
+        "allocated_percentage": 100
+    })
+
+    si.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    return si
