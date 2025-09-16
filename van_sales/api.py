@@ -302,3 +302,61 @@ def create_sales_order_with_salesperson(order_data: dict):
     frappe.db.commit()
 
     return so
+
+@frappe.whitelist()
+def get_assigned_customers(limit_start=0, limit_page_length=10, filters=None, fields=None, order_by="creation desc"):
+    try:
+        # Parse JSON strings (if passed from frontend)
+        if isinstance(filters, str):
+            filters = json.loads(filters)
+        if not filters:
+            filters = {}
+        if isinstance(fields, str):
+            fields = json.loads(fields)
+
+        # Default fields if none provided
+        if not fields:
+            fields = ["name", "customer_name", "customer_type", "mobile_no", "email_id"]
+
+        current_user = frappe.session.user
+
+        meta = frappe.get_meta("Employee")
+        if meta.has_field("custom_customer_group"):
+            employee_name, custom_customer_group = frappe.db.get_value(
+            "Employee",
+            {"user_id": current_user},
+            ["name", "custom_customer_group"]
+        ) or (None, None)
+        if not employee_name:
+            frappe.throw(f"No Employee linked to User {current_user}")
+        if custom_customer_group:
+            filters["customer_group"] = custom_customer_group
+        else:
+            frappe.throw("Employee Doctype does not have Assigned Customer Group field")
+
+            
+        # Get total count with filters
+        total_count = frappe.db.count("Customer", filters=filters)
+
+        # Get paginated data
+        customers = frappe.get_all(
+            "Customer",
+            filters=filters,
+            fields=fields,
+            order_by=order_by,
+            limit_start=int(limit_start),
+            limit_page_length=int(limit_page_length)
+        )
+        
+        frappe.local.response.update({
+            "data": {
+                "total_count": total_count,
+                "results": customers
+            }
+        })
+
+        return
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "get_customers API Error")
+        frappe.throw("Something went wrong while fetching customers.")

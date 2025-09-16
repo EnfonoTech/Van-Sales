@@ -244,3 +244,14 @@ override_whitelisted_methods = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["name", "in", [
+                "Employee-custom_assigned_customers",
+                "Employee-custom_customer_group"
+            ]]
+        ]
+    }
+]
