@@ -439,4 +439,11 @@ def item_list_with_stock_balance():
         qty = get_stock_balance(item["name"], warehouse)
         item["stock_qty"] = qty or 0
 
+        price = frappe.db.get_value(
+            "Item Price",
+            {"item_code": item["name"], "price_list": "Standard Selling"},
+            "price_list_rate"
+        )
+        item["standard_rate"] = price or 0
+
     return items
