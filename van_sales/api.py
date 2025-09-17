@@ -3,6 +3,7 @@ import json
 from frappe.auth import LoginManager
 from frappe.utils import flt
 from frappe.utils.password import get_decrypted_password
+from erpnext.stock.stock_ledger import get_stock_balance
 
 @frappe.whitelist(allow_guest=True)
 def login_and_get_keys(username: str, password: str):
@@ -413,3 +414,29 @@ def create_sales_invoice_with_salesperson_and_update_stock(invoice_data: dict):
     frappe.db.commit()
 
     return si
+
+@frappe.whitelist()
+def item_list_with_stock_balance():
+    user = frappe.session.user
+
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+    if not employee:
+        frappe.throw(f"No Employee linked to User {user}")
+    
+    meta = frappe.get_meta("Employee")
+    if meta.has_field("custom_vanwarehouse"):
+        warehouse = frappe.db.get_value("Employee", employee, "custom_vanwarehouse")
+        if not warehouse:
+            frappe.throw(f"Warehouse not set for {employee}")
+    else:
+        frappe.throw(f"No Van/Warehouse field in Employee Master")
+
+    items = frappe.db.get_all(
+        "Item",
+        fields=["name", "item_name", "stock_uom"])
+
+    for item in items:
+        qty = get_stock_balance(item["name"], warehouse)
+        item["stock_qty"] = qty or 0
+
+    return items
