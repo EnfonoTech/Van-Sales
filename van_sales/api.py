@@ -366,3 +366,50 @@ def get_assigned_customers(limit_start=0, limit_page_length=10, filters=None, fi
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_customers API Error")
         frappe.throw("Something went wrong while fetching customers.")
+
+@frappe.whitelist()
+def create_sales_invoice_with_salesperson_and_update_stock(invoice_data: dict):
+    """
+    Create Sales Invoice and auto-assign salesperson based on current user
+    """
+
+    if isinstance(invoice_data, str):
+        invoice_data = frappe.parse_json(invoice_data)
+
+    current_user = frappe.session.user
+
+    employee = frappe.db.get_value("Employee", {"user_id": current_user}, "name")
+    if not employee:
+        frappe.throw(f"No Employee linked to User {current_user}")
+
+    sales_person = frappe.db.get_value("Sales Person", {"employee": employee}, "name")
+    if not sales_person:
+        frappe.throw(f"No Sales Person linked to Employee {employee}")
+
+    meta = frappe.get_meta("Employee")
+    if meta.has_field("custom_vanwarehouse"):
+        warehouse = frappe.db.get_value("Employee", employee, "custom_vanwarehouse")
+        if not warehouse:
+            frappe.throw(f"Warehouse not set for {employee}")
+    else:
+        frappe.throw(f"No Van/Warehouse field in Employee Master")
+
+    si = frappe.get_doc({
+        "doctype": "Sales Invoice",
+        **invoice_data
+    })
+
+    si.append("sales_team", {
+        "sales_person": sales_person,
+        "allocated_percentage": 100
+    })
+
+    for item in si.items:
+        item.warehouse = warehouse
+
+    si.update_stock = 1
+
+    si.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    return si
