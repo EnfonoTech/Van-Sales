@@ -416,8 +416,11 @@ def create_sales_invoice_with_salesperson_and_update_stock(invoice_data: dict):
     return si
 
 @frappe.whitelist()
-def item_list_with_stock_balance():
+def item_list_with_stock_balance(filters=None):
     user = frappe.session.user
+
+    if isinstance(filters, str):
+        filters = json.loads(filters)
 
     employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
     if not employee:
@@ -433,7 +436,8 @@ def item_list_with_stock_balance():
 
     items = frappe.db.get_all(
         "Item",
-        fields=["name", "item_name", "stock_uom"])
+        fields=["name", "item_name", "stock_uom"],
+        filters=filters)
 
     for item in items:
         qty = get_stock_balance(item["name"], warehouse)
