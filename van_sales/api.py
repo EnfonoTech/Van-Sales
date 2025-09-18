@@ -1,9 +1,10 @@
 import frappe
 import json
 from frappe.auth import LoginManager
-from frappe.utils import flt
+from frappe.utils import flt, getdate
 from frappe.utils.password import get_decrypted_password
 from erpnext.stock.stock_ledger import get_stock_balance
+from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
 @frappe.whitelist(allow_guest=True)
 def login_and_get_keys(username: str, password: str):
@@ -451,3 +452,26 @@ def item_list_with_stock_balance(filters=None):
         item["standard_rate"] = price or 0
 
     return items
+
+@frappe.whitelist()
+def create_payment_from_invoice(payment_data):
+
+    if isinstance(payment_data, str):
+        payment_data = json.loads(payment_data)
+
+    si_status = frappe.get_value("Sales Invoice", payment_data["invoice_name"], "docstatus")
+    if si_status != 1:
+        frappe.throw("Sales Invoice must be submitted before creating Payment Entry")
+
+    pe = get_payment_entry("Sales Invoice", payment_data["invoice_name"])
+
+    pe.payment_type = "Receive"
+    pe.mode_of_payment = payment_data["payment_mode"]
+    pe.reference_no = payment_data["ref_no"]
+    pe.reference_date = getdate(payment_data["ref_date"]) 
+
+    pe.insert(ignore_permissions=True)
+    # pe.submit()
+    frappe.db.commit()
+
+    return pe.name
