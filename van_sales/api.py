@@ -406,12 +406,14 @@ def create_sales_invoice_with_salesperson_and_update_stock(invoice_data: dict):
         "allocated_percentage": 100
     })
 
+    si.insert(ignore_permissions=True)
+
     for item in si.items:
         item.warehouse = warehouse
 
     si.update_stock = 1
 
-    si.insert(ignore_permissions=True)
+    si.save(ignore_permissions=True)
     frappe.db.commit()
 
     return si
